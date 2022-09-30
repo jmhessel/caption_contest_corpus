@@ -103,7 +103,7 @@ for split in [1,2,3,4]:
 ```
 
 By default, information available in the "from description" setting is provided. You can also load the more minimal examples, e.g., as:
-```
+```python
 dataset = load_dataset("jmhessel/newyorker_caption_contest", "matching_from_pixels") # split 0
 dataset = load_dataset("jmhessel/newyorker_caption_contest", "matching_from_pixels_4") # split 4
 ```
