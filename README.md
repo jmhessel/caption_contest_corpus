@@ -86,6 +86,30 @@ But if you're hoping to report results in the same setting as the original paper
   <img src="task_teaser.png" width=512px>
 </p>
 
+### Our tasks are available on huggingface!
+
+You can load tasks like this:
+```python
+dataset = load_dataset("jmhessel/newyorker_caption_contest", "matching")
+dataset = load_dataset("jmhessel/newyorker_caption_contest", "ranking")
+dataset = load_dataset("jmhessel/newyorker_caption_contest", "explanation")
+```
+These are cross-validation split 0. We report an average over 5 splits; you can load the others like:
+```python
+for split in [1,2,3,4]:
+    load_dataset("jmhessel/newyorker_caption_contest", "matching_{}".format(split))
+    load_dataset("jmhessel/newyorker_caption_contest", "ranking_{}".format(split))
+    load_dataset("jmhessel/newyorker_caption_contest", "explanation_{}".format(split))
+```
+
+By default, information available in the "from description" setting is provided. You can also load the more minimal examples, e.g., as:
+```
+dataset = load_dataset("jmhessel/newyorker_caption_contest", "matching_from_pixels") # split 0
+dataset = load_dataset("jmhessel/newyorker_caption_contest", "matching_from_pixels_4") # split 4
+```
+
+### Other ways of accessing the data
+
 [Task splits can be downloaded here.](https://storage.googleapis.com/ai2-jack-public/caption_contest_data_public/tasks.zip)
 Because the size of the dataset is relatively small, we report
 evaluation metrics averaged over the "test" portion of 5-fold
