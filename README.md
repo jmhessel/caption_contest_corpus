@@ -11,7 +11,7 @@ This is the dataset to accompany [Do Androids Laugh at Electric Sheep? Humor "Un
 }
 ```
 
-Models (e.g., t5-11b/OFA checkpoints), code (e.g., the evaluation
+If you use this dataset, we would appreciate you citing our work, but also -- several other papers that we build this corpus upon. See [Citation Information](#citation). Models (e.g., t5-11b/OFA checkpoints), code (e.g., the evaluation
 scripts we used, the input/output format), etc. will be released soon.
 
 #### NEW: the data is now available on the huggingface hub! https://huggingface.co/datasets/jmhessel/newyorker_caption_contest
