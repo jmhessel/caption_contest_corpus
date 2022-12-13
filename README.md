@@ -1,5 +1,11 @@
 # Do Androids Laugh at Electric Sheep? Humor "Understanding" Benchmarks from The New Yorker Caption Contest
 
+
+<p align="center">
+  <img src="task_teaser.png" width=512px>
+</p>
+
+
 This is the dataset to accompany [Do Androids Laugh at Electric Sheep? Humor "Understanding" Benchmarks from The New Yorker Caption Contest](https://arxiv.org/abs/2209.06293). The bibtex is:
 
 ```
@@ -11,16 +17,84 @@ This is the dataset to accompany [Do Androids Laugh at Electric Sheep? Humor "Un
 }
 ```
 
-If you use this dataset, we would appreciate you citing our work, but also -- several other papers that we build this corpus upon. See [Citation Information](#citation). Models (e.g., t5-11b/OFA checkpoints), code (e.g., the evaluation
-scripts we used, the input/output format), etc. will be released soon.
+If you use this dataset, we would appreciate you citing our work, but also -- several other papers that we build this corpus upon. See [Citation Information](#citation). Models (e.g., t5-11b/OFA checkpoints), code (e.g., the evaluation scripts we used), etc. will be released soon.
 
-#### NEW: the data is now available on the huggingface hub! https://huggingface.co/datasets/jmhessel/newyorker_caption_contest
+#### Quickstart: access the data on the huggingface hub!
+
+https://huggingface.co/datasets/jmhessel/newyorker_caption_contest
+
+```python
+
+from datasets import load_dataset
+
+# load train/val/test splits for each task
+dset = load_dataset("jmhessel/newyorker_caption_contest", "matching")
+dset = load_dataset("jmhessel/newyorker_caption_contest", "ranking")
+dset = load_dataset("jmhessel/newyorker_caption_contest", "explanation")
+
+# load in the "from pixels" setting
+dset = load_dataset("jmhessel/newyorker_caption_contest", "ranking_from_pixels")
+
+# we ran in cross val (split 0 is default ^ ) so you can load splits 1/2/3/4 this way the 4th data split
+dset = load_dataset("jmhessel/newyorker_caption_contest", "explanation_4")
+# ... or split 1...
+dset = load_dataset("jmhessel/newyorker_caption_contest", "explanation_from_pixels_1")
+
+```
+
+Here's an example instance from Matching:
+```
+{'caption_choices': ['Tell me about your childhood very quickly.',
+                     "Believe me . . . it's what's UNDER the ground that's "
+                     'most interesting.',
+                     "Stop me if you've heard this one.",
+                     'I have trouble saying no.',
+                     'Yes, I see the train but I think we can beat it.'],
+ 'contest_number': 49,
+ 'entities': ['https://en.wikipedia.org/wiki/Rule_of_three_(writing)',
+              'https://en.wikipedia.org/wiki/Bar_joke',
+              'https://en.wikipedia.org/wiki/Religious_institute'],
+ 'from_description': 'scene: a bar description: Two priests and a rabbi are '
+                     'walking into a bar, as the bartender and another patron '
+                     'look on. The bartender talks on the phone while looking '
+                     'skeptically at the incoming crew. uncanny: The scene '
+                     'depicts a very stereotypical "bar joke" that would be '
+                     'unlikely to be encountered in real life; the skepticism '
+                     'of the bartender suggests that he is aware he is seeing '
+                     'this trope, and is explaining it to someone on the '
+                     'phone. entities: Rule_of_three_(writing), Bar_joke, '
+                     'Religious_institute. choices A: Tell me about your '
+                     "childhood very quickly. B: Believe me . . . it's what's "
+                     "UNDER the ground that's most interesting. C: Stop me if "
+                     "you've heard this one. D: I have trouble saying no. E: "
+                     'Yes, I see the train but I think we can beat it.',
+ 'image': <PIL.JpegImagePlugin.JpegImageFile image mode=L size=323x231 at 0x7F34F283E9D0>,
+ 'image_description': 'Two priests and a rabbi are walking into a bar, as the '
+                      'bartender and another patron look on. The bartender '
+                      'talks on the phone while looking skeptically at the '
+                      'incoming crew.',
+ 'image_location': 'a bar',
+ 'image_uncanny_description': 'The scene depicts a very stereotypical "bar '
+                              'joke" that would be unlikely to be encountered '
+                              'in real life; the skepticism of the bartender '
+                              'suggests that he is aware he is seeing this '
+                              'trope, and is explaining it to someone on the '
+                              'phone.',
+ 'instance_id': '21125bb8787b4e7e82aa3b0a1cba1571',
+ 'label': 'C',
+ 'n_tokens_label': 1,
+ 'questions': ['What is the bartender saying on the phone in response to the '
+               'living, breathing, stereotypical bar joke that is unfolding?']}
+```
+
+The label "C" indicates that the 3rd choice in the caption_choices is correct.
+
 
 ## Cartoon images
 
 [You can download all of the contests images here.](https://storage.googleapis.com/ai2-jack-public/caption_contest_data_public/all_contest_images.zip) Each is named `X.jpeg` where `X` is the `contest_number`.
 
-## Annotations
+### Raw annotation files
 
 <p align="center">
   <img src="data_teaser.png" width=1024px>
@@ -81,34 +155,6 @@ The annotations themselves are stored in `description_hit` and `links_hit` respe
 
 But if you're hoping to report results in the same setting as the original paper, [please see below](#explanation)
 
-
-## Tasks
-
-<p align="center">
-  <img src="task_teaser.png" width=512px>
-</p>
-
-### Our tasks are available on huggingface!
-
-You can load tasks like this:
-```python
-dataset = load_dataset("jmhessel/newyorker_caption_contest", "matching")
-dataset = load_dataset("jmhessel/newyorker_caption_contest", "ranking")
-dataset = load_dataset("jmhessel/newyorker_caption_contest", "explanation")
-```
-These are cross-validation split 0. We report an average over 5 splits; you can load the others like:
-```python
-for split in [1,2,3,4]:
-    load_dataset("jmhessel/newyorker_caption_contest", "matching_{}".format(split))
-    load_dataset("jmhessel/newyorker_caption_contest", "ranking_{}".format(split))
-    load_dataset("jmhessel/newyorker_caption_contest", "explanation_{}".format(split))
-```
-
-By default, information available in the "from description" setting is provided. You can also load the more minimal examples, e.g., as:
-```python
-dataset = load_dataset("jmhessel/newyorker_caption_contest", "matching_from_pixels") # split 0
-dataset = load_dataset("jmhessel/newyorker_caption_contest", "matching_from_pixels_4") # split 4
-```
 
 ### Other ways of accessing the data
 
