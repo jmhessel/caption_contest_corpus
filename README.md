@@ -9,11 +9,11 @@
 This is the dataset to accompany [Do Androids Laugh at Electric Sheep? Humor "Understanding" Benchmarks from The New Yorker Caption Contest](https://arxiv.org/abs/2209.06293). The bibtex is:
 
 ```
-@article{hessel2022androids,
-  title={Do Androids Laugh at Electric Sheep? Humor "Understanding" Benchmarks from The New Yorker Caption Contest},
-  author={Hessel, Jack and Marasovi{\'c}, Ana and Hwang, Jena D and Lee, Lillian and Da, Jeff and Zellers, Rowan and Mankoff, Robert and Choi, Yejin},
-  journal={arXiv preprint arXiv:2209.06293},
-  year={2022}
+@inproceedings{hessel2023androids,
+  title={Do Androids Laugh at Electric Sheep? {Humor} ``Understanding'' Benchmarks from {The New Yorker Caption Contest}},
+  author={Hessel, Jack and Marasovi{\'c}, Ana and Hwang, Jena D. and Lee, Lillian and Da, Jeff and Zellers, Rowan and Mankoff, Robert and Choi, Yejin},
+  booktitle={Proceedings of the ACL},
+  year={2023}
 }
 ```
 
