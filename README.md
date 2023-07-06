@@ -178,7 +178,7 @@ We will support this soon. We have instances and annotations to support evaluati
 
 [You can download all of the contests images here.](https://storage.googleapis.com/ai2-jack-public/caption_contest_data_public/all_contest_images.zip) Each is named `X.jpeg` where `X` is the `contest_number`.
 
-### Raw annotation files
+## Raw annotation files
 
 <p align="center">
   <img src="data_teaser.png" width=1024px>
