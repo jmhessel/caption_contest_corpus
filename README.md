@@ -5,21 +5,24 @@
   <img src="task_teaser.png" width=512px>
 </p>
 
-
-This is the dataset to accompany [Do Androids Laugh at Electric Sheep? Humor "Understanding" Benchmarks from The New Yorker Caption Contest](https://arxiv.org/abs/2209.06293). The bibtex is:
+[Do Androids Laugh at Electric Sheep? Humor "Understanding" Benchmarks from The New Yorker Caption Contest](https://arxiv.org/abs/2209.06293).
 
 ```
 @inproceedings{hessel2023androids,
-  title={Do Androids Laugh at Electric Sheep? {Humor} ``Understanding'' Benchmarks from {The New Yorker Caption Contest}},
-  author={Hessel, Jack and Marasovi{\'c}, Ana and Hwang, Jena D. and Lee, Lillian and Da, Jeff and Zellers, Rowan and Mankoff, Robert and Choi, Yejin},
+  title={Do Androids Laugh at Electric Sheep? {Humor} ``Understanding''
+         Benchmarks from {The New Yorker Caption Contest}},
+  author={Hessel, Jack and Marasovi{\'c}, Ana and Hwang, Jena D. and Lee, Lillian
+          and Da, Jeff and Zellers, Rowan and Mankoff, Robert and Choi, Yejin},
   booktitle={Proceedings of the ACL},
   year={2023}
 }
 ```
 
-If you use this dataset, we would appreciate you citing our work, but also -- several other papers that we build this corpus upon. See [Citation Information](#citation). Models (e.g., t5-11b/OFA checkpoints), code (e.g., the evaluation scripts we used), etc. will be released soon.
+If you use this data, please also cite several other works from which that we build this corpus upon. See [Citation Information](#citation).
 
-#### Quickstart: access the data on the huggingface hub!
+## Quickstart:
+
+Our recommendation is to access the corpus on huggingface:
 
 https://huggingface.co/datasets/jmhessel/newyorker_caption_contest
 
@@ -39,7 +42,6 @@ dset = load_dataset("jmhessel/newyorker_caption_contest", "ranking_from_pixels")
 dset = load_dataset("jmhessel/newyorker_caption_contest", "explanation_4")
 # ... or split 1...
 dset = load_dataset("jmhessel/newyorker_caption_contest", "explanation_from_pixels_1")
-
 ```
 
 Here's an example instance from Matching:
@@ -88,6 +90,88 @@ Here's an example instance from Matching:
 ```
 
 The label "C" indicates that the 3rd choice in the caption_choices is correct.
+
+
+## Cross-validation experiments
+
+
+<p align="center">
+  <img src="https://github.com/jmhessel/caption_contest_corpus/assets/178075/585cee7f-7f06-4be4-bda5-c17be5e6b014" width=512>
+</p>
+
+The results in the paper are reported in the *cross-validation setting* which is different than the leaderboard setting.
+
+## Leaderboard setting
+
+We have a fully-held out test set leaderboard. *Note: the leaderboard distribution may differ from the cross-validation distribution because the data is constructed differently. The raw values thus may differ from those reported in the paper*
+
+### How to submit to the matching leaderboard
+
+The official leaderboard is hosted [here!](https://leaderboard.allenai.org/nycc-matching/submissions/public)
+<p align="center">
+  <img src="https://leaderboard.allenai.org/assets/images/leaderboard/nycc_matching/logo.svg" width=128>
+</p>
+
+How to submit:
+
+1. Download the leaderboard instances from `https://storage.googleapis.com/ai2-mosaic-public/projects/nycc/matching_test_set_public.zip`, and unzip them like `unzip matching_test_set_public.zip`.
+This folder contains the test set cartoon jpgs, along with `instances.json`.
+```
+$ ls matching_test_set_public
+061c2794c6d17002115c9d6f3a18a702.jpg
+089263e1b961b2fe115073d23c2e7a3a.jpg
+1b8bd2c09fe0f8fcbcbddd760d2815af.jpg
+1c0b5b3cf8095549f137ec750d87c90a.jpg
+...
+instances.json
+```
+2. Produce a prediction using your model for each instance in `instances.json`. Each of the 830 leaderboard matching instances looks like this:
+```
+{'choices': {'A': 'It drops down once we have maxed his insurance',
+             'B': 'It was at this exact moment when Brenda asked herself, “are '
+                  'you really happy with Frank?',
+             'C': 'Wait: You have thumbs? !',
+             'D': 'I think we need a longer apartment.',
+             'E': "It's cannabis. They never get far."},
+ 'image': 'd4f8a9ad80270b103bc8c7fa1be89a81.jpg',
+ 'instance_id': '5dc4f6a5648682c5beabba053e7a112c'}
+```
+Your job is to produce a json that maps from `instance_id` to one of `A`, `B`, `C`, `D`, or `E`, depending on which your model predicts as the correct caption, e.g., `{"5dc4f6a5648682c5beabba053e7a112c": "A", ...}`
+
+3.  Save that json to `matching_predictions.json`, upload the file to the server, and follow the directions from there!
+
+### How to submit to the ranking leaderboard
+
+The official leaderboard is hosted [here!](https://leaderboard.allenai.org/nycc-ranking/submissions/public)
+<p align="center">
+  <img src="https://leaderboard.allenai.org/assets/images/leaderboard/nycc_ranking/logo.svg" width=128>
+</p>
+
+1. Download the leaderboard instances from `https://storage.googleapis.com/ai2-mosaic-public/projects/nycc/ranking_test_set_public.zip`, and unzip them like `unzip ranking_test_set_public.zip`.
+This folder contains the test set cartoon jpgs, along with `instances.json`.
+```
+$ ls ranking_test_set_public
+061c2794c6d17002115c9d6f3a18a702.jpg
+089263e1b961b2fe115073d23c2e7a3a.jpg
+1b8bd2c09fe0f8fcbcbddd760d2815af.jpg
+1c0b5b3cf8095549f137ec750d87c90a.jpg
+...
+instances.json
+```
+2. Produce a prediction using your model for each instance in `instances.json`. Each of the 664 leaderboard ranking instances looks like this:
+```
+{'choices': {'A': 'Looks to be a herniated disco.',
+             'B': 'Everyone, wish upon a star!'},
+ 'image': 'fc79106cf3660f5b81cdbeed0f968d98.jpg',
+ 'instance_id': 'cba6d1ce5711ad56c31e5577f3207ac3'
+```
+Your job is to produce a json that maps from `instance_id` to one of `A` or `B` depending on which your model predicts as the correct caption, e.g., `{"cba6d1ce5711ad56c31e5577f3207ac3": "A", ...}`
+
+3.  Save that json to `ranking_predictions.json`, upload the file to the server, and follow the directions from there!
+
+### How to submit to the explanation leaderboard
+
+We will support this soon. We have instances and annotations to support evaluation, but are currently tweaking automatic evaluation metrics to ensure our leaderboard correlates with human judgement. We expect this leaderboard will be available by ~Aug 2023.
 
 
 ## Cartoon images
@@ -153,10 +237,8 @@ The annotations themselves are stored in `description_hit` and `links_hit` respe
   'n_expl_toks': 70}, ... ]
 ```
 
-But if you're hoping to report results in the same setting as the original paper, [please see below](#explanation)
-
-
-### Other ways of accessing the data
+<details>
+<summary> * Other ways of accessing the data* </summary>
 
 [Task splits can be downloaded here.](https://storage.googleapis.com/ai2-jack-public/caption_contest_data_public/tasks.zip)
 Because the size of the dataset is relatively small, we report
@@ -257,6 +339,8 @@ annotations_per_split
 These files have the [same format described above](#annotations), but the val/test sets only have
 a single fixed description/link HIT, so we recommend using these annotations if you are running
 in the "from description" cross-validation setup.
+
+</details>
 
 ## Citation
 
