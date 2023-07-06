@@ -103,7 +103,7 @@ The results in the paper are reported in the *cross-validation setting* which is
 
 ## Leaderboard setting
 
-We have a fully-held out test set leaderboard. *Note: the leaderboard distribution may differ from the cross-validation distribution because the data is constructed differently. The raw values thus may differ from those reported in the paper*
+We have a fully-held out test set leaderboard. *Note: the leaderboard distribution may differ from the cross-validation distribution because the data is constructed differently. The raw values thus may differ from those reported in the paper*. For an end-to-end example of training a model and then submitting to the leaderboard, you can check out the [CLIP](clip/) training/prediction scripts.
 
 ### How to submit to the matching leaderboard
 
