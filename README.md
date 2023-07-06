@@ -92,14 +92,13 @@ Here's an example instance from Matching:
 The label "C" indicates that the 3rd choice in the caption_choices is correct.
 
 
-## Cross-validation experiments
-
+## Cross-validation setting
 
 <p align="center">
   <img src="https://github.com/jmhessel/caption_contest_corpus/assets/178075/585cee7f-7f06-4be4-bda5-c17be5e6b014" width=512>
 </p>
 
-The results in the paper are reported in the *cross-validation setting* which is different than the leaderboard setting.
+The results in the paper are reported in the *cross-validation setting* which is different than the leaderboard setting. The official evaluation script for computing accuracy is [eval_crossval.py](eval_crossval.py) For an end-to-end example of the cross-validation setting, you can check out the 5-shot/0-shot [GPT-4](gpt4/) scripts, which reproduce the reported values from the paper.
 
 ## Leaderboard setting
 
