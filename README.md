@@ -163,7 +163,7 @@ instances.json
 {'choices': {'A': 'Looks to be a herniated disco.',
              'B': 'Everyone, wish upon a star!'},
  'image': 'fc79106cf3660f5b81cdbeed0f968d98.jpg',
- 'instance_id': 'cba6d1ce5711ad56c31e5577f3207ac3'
+ 'instance_id': 'cba6d1ce5711ad56c31e5577f3207ac3'}
 ```
 Your job is to produce a json that maps from `instance_id` to one of `A` or `B` depending on which your model predicts as the correct caption, e.g., `{"cba6d1ce5711ad56c31e5577f3207ac3": "A", ...}`
 
