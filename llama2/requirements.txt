@@ -2,5 +2,4 @@ transformers
 auto-gptq
 torch
 bitsandbytes
-
-
+accelerate
