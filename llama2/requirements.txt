@@ -1,0 +1,6 @@
+transformers
+auto-gptq
+torch
+bitsandbytes
+
+
