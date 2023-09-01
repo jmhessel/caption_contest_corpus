@@ -370,7 +370,7 @@ def main():
                             print('~'*10)
 
             if mode == 'val' and mainproc:
-                val_loss = running_sum_loss / n_batch
+                val_loss = epoch_stats['running_sum_loss'] / n_batch
                 print('we computed accuracy/loss over {} validation examples.'.format(n_exs))
                 best_yet = val_loss < best_val_loss
 
