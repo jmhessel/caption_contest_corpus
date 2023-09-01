@@ -82,6 +82,11 @@ def parse_args():
                         default=0,
                         help='if 1, we will use LoRA')
 
+    parser.add_argument('--lora_r',
+                        type=int,
+                        default=32,
+                        help='what rank LoRA should be used?')
+
     parser.add_argument('--just_val',
                         type=int,
                         default=0,
@@ -115,7 +120,7 @@ def parse_args():
 
     args.output_path = (args.task_name + '~val{}'.format(args.val_stat) +
                         '={:.5f}' + '~model=' + '{}'.format(args.model.replace('/', '+')) +
-                        '~lora={}'.format(args.use_lora) + '~lr={}'.format(args.lr) +
+                        '~lora={}'.format(args.use_lora if args.use_lora == 0 else args.lora_r) + '~lr={}'.format(args.lr) +
                         '~4bit={}'.format(args.load_in_4bit) + '~promptloss={}'.format(args.prompt_loss_weight) +
                         ('.pt' if not args.use_lora else ''))
     if not args.force_run:
@@ -283,7 +288,7 @@ def main():
 
     if args.use_lora:
         peft_config = LoraConfig(
-            task_type=TaskType.CAUSAL_LM, inference_mode=False, r=32, lora_alpha=16, lora_dropout=0.1
+            task_type=TaskType.CAUSAL_LM, inference_mode=False, r=args.lora_r, lora_alpha=16, lora_dropout=0.1
         )
         model = get_peft_model(model, peft_config)
         if mainproc:
