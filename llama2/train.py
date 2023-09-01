@@ -87,6 +87,11 @@ def parse_args():
                         default=32,
                         help='what rank LoRA should be used?')
 
+    parser.add_argument('--prompt_delimiter_string',
+                        type=str,
+                        default='<SEP>',
+                        help='what string should delimit the prompt/completion?')
+
     parser.add_argument('--just_val',
                         type=int,
                         default=0,
@@ -107,6 +112,11 @@ def parse_args():
                         default=0,
                         help='if 1 we will use bfloat16 instead of float16 for quantized models')
 
+    parser.add_argument('--test_memory',
+                        type=int,
+                        default=0,
+                        help='if 1 we will put the longest sequence first, which causes OOM early')
+
     parser.add_argument('--use_adafactor',
                         type=int,
                         default=0,
@@ -114,6 +124,7 @@ def parse_args():
 
     args = parser.parse_args()
     args.val_stat = 'loss'
+    args.prompt_delimiter_string = args.prompt_delimiter_string.strip()
 
     if not args.tokenizer:
         args.tokenizer = args.model
@@ -143,15 +154,15 @@ class SequenceDataset(torch.utils.data.Dataset):
         self.with_label = with_label
 
     def __getitem__(self, idx):
-        input_seq = self.tokenizer(self.data[idx]['input'] + ' <SEP> ')
+        input_seq = self.tokenizer(self.data[idx]['input'] + ' {} '.format(self.args.prompt_delimiter_string))
         idx_of_sep = len(input_seq['input_ids'])
 
         if self.with_label:
-            seq = self.data[idx]['input'] + ' <SEP> ' + self.data[idx]['target'] + ' ' + self.tokenizer.eos_token
+            seq = self.data[idx]['input'] + ' {} '.format(self.args.prompt_delimiter_string) + self.data[idx]['target'] + ' ' + self.tokenizer.eos_token
             seq = self.tokenizer(seq)
         else:
             # this space is important to remove for inference, need to double check tokenization :-)
-            input_seq = self.tokenizer(self.data[idx]['input'] + ' <SEP>')
+            input_seq = self.tokenizer(self.data[idx]['input'] + ' {}'.format(self.args.prompt_delimiter_string))
             seq = input_seq
 
         seq['prompt_ends_idx'] = idx_of_sep - 1
@@ -228,6 +239,7 @@ def main():
     mainproc = accelerator.is_local_main_process
     if not args.skip_save and mainproc:
         print('saving to {}'.format(args.output_path))
+        print('Delimiting using "{}"'.format(args.prompt_delimiter_string))
 
     tokenizer = transformers.AutoTokenizer.from_pretrained(args.tokenizer)
     tokenizer.deprecation_warnings["Asking-to-pad-a-fast-tokenizer"] = True
@@ -236,6 +248,13 @@ def main():
         train = [json.loads(line) for line in f.readlines()]
     with open(args.val) as f:
         val = [json.loads(line) for line in f.readlines()]
+
+    if args.test_memory:
+        # trick: put the very longest example first to check for OOM
+        train = list(sorted(train, key=lambda x: -(len(x['input']) + len(x['target']))))
+        train_rest = train[1:]
+        np.random.shuffle(train_rest)
+        train = [train[0]] + train_rest
 
     train_loader, val_loader = map(
         lambda x: SequenceDataset(x, tokenizer, args),
@@ -251,7 +270,7 @@ def main():
     )
 
     train_loader = torch.utils.data.DataLoader(
-        train_loader, shuffle=True, collate_fn=data_collator, batch_size=args.batch_size, num_workers=4
+        train_loader, shuffle=(False if args.test_memory else True), collate_fn=data_collator, batch_size=args.batch_size, num_workers=4
     )
 
     val_loader = torch.utils.data.DataLoader(
