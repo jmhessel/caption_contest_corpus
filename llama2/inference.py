@@ -85,6 +85,11 @@ def parse_args():
                         default=.95,
                         type=float)
 
+    parser.add_argument('--prompt_delimiter_string',
+                        type=str,
+                        default='<SEP>',
+                        help='what string should delimit the prompt/completion?')
+
     args = parser.parse_args()
 
     load_args_from_fname(args)
@@ -232,7 +237,7 @@ def main():
                     temperature=args.temp,
                     top_p=args.top_p)
 
-            sample = [tokenizer.decode(s, skip_special_tokens=True).split('<SEP>')[-1].strip() for s in sample]
+            sample = [tokenizer.decode(s, skip_special_tokens=True).split(args.prompt_delimiter_string)[-1].strip() for s in sample]
 
             for cid, s in zip(ids, sample):
                 instanceid2pred[cid] = s
