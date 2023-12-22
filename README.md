@@ -170,8 +170,7 @@ Your job is to produce a json that maps from `instance_id` to one of `A` or `B` 
 
 ### How to submit to the explanation leaderboard
 
-We will support this soon. We have instances and annotations to support evaluation, but are currently tweaking automatic evaluation metrics to ensure our leaderboard correlates with human judgement. We expect this leaderboard will be available by ~Aug 2023.
-
+There is no automatic explanation leaderboard. We had initially hoped to support automatic evaluation, but, because difficult cases still pose a challenge for even LLM-backed metrics in terms of human correlation, we decided to not host an explanation generation leaderboard. If you are interested in automatic evaluation of joke explanations, we do have instances and annotations we collected that are currently unused. Feel free to get in touch if you're interested in working with that data; we'd love to hear if there's interest in this corpus.
 
 ## Cartoon images
 
