@@ -14,7 +14,8 @@
   author={Hessel, Jack and Marasovi{\'c}, Ana and Hwang, Jena D. and Lee, Lillian
           and Da, Jeff and Zellers, Rowan and Mankoff, Robert and Choi, Yejin},
   booktitle={Proceedings of the ACL},
-  year={2023}
+  year={2023},
+  note={Best paper award (one of three)}
 }
 ```
 
