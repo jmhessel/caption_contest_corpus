@@ -18,6 +18,9 @@ import base64
 import hashlib
 import json
 import os
+
+# in lieu of a loading bar...
+os.environ["LITELLM_LOG"] = "DEBUG"
 import re
 import time
 from typing import Dict, List
@@ -64,16 +67,13 @@ class CaptionMatcher:
         with open(instances_json) as f:
             self.instances = json.load(f)
 
-        # debug:
-        self.instances = self.instances[:5]
-
     def get_cache_path(self, instance_id: str) -> str:
         """Generate a cache file path for a specific instance and model."""
-        # Create a safe filename from model name by replacing slashes
-        safe_model = self.model.replace("/", "_")
-        cache_key = f"{safe_model}_{instance_id}"
-        hashed_key = hashlib.md5(cache_key.encode()).hexdigest()
-        return os.path.join(self.cache_dir, f"{hashed_key}.json")
+        # Create a safe filename from model name by replacing slashes and other unsafe characters
+        safe_model = re.sub(r"[^\w\-\.]", "_", self.model)
+        # Include model name in filename directly (not just in hash) to avoid collisions
+        hashed_key = hashlib.md5(instance_id.encode()).hexdigest()
+        return os.path.join(self.cache_dir, f"{safe_model}_{hashed_key}.json")
 
     def encode_image(self, image_path: str) -> str:
         """Encode image to base64 string."""
@@ -109,9 +109,10 @@ class CaptionMatcher:
                 return match.group(1)
 
         # Log when we had to resort to the fallback extraction
-        print(f"Used LLM fallback extraction, just guessing E. This should not happen if the model follows the formatting requests.")
-        return 'E'
-
+        print(
+            f"Used LLM fallback extraction, just guessing E. This should not happen if the model follows the formatting requests."
+        )
+        return "E"
 
     def prepare_instance_message(self, instance: Dict) -> List[Dict]:
         """Prepare message array for a single instance."""
@@ -198,7 +199,6 @@ Remember to provide your final answer in the format "Final Answer: X" where X is
             timeout=120,  # Adjust timeout as needed
             max_workers=self.max_workers,  # Use configured worker count
         )
-
 
         # Process responses
         batch_results = []
@@ -313,7 +313,7 @@ def parse_args():
     parser.add_argument(
         "--max_workers",
         type=int,
-        default=10,
+        default=1,
         help="Maximum number of parallel workers for batch processing (default: 10)",
     )
 
