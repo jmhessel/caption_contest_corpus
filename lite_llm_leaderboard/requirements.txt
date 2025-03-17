@@ -1,1 +1,1 @@
-litellm
+litellm==v1.63.11

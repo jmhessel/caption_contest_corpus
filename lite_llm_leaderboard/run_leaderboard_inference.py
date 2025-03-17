@@ -23,6 +23,7 @@ import time
 from typing import Dict, List
 
 from litellm import batch_completion, completion
+import litellm
 from tqdm import tqdm
 
 # Constants
@@ -69,6 +70,9 @@ class CaptionMatcher:
         # Load instances
         with open(instances_json) as f:
             self.instances = json.load(f)
+
+        # debug:
+        self.instances = self.instances[:5]
 
     def get_cache_path(self, instance_id: str) -> str:
         """Generate a cache file path for a specific instance and model."""
@@ -174,60 +178,7 @@ Remember to provide your final answer in the format "Final Answer: X" where X is
                 ],
             },
         ]
-
         return messages
-
-    def process_instance(self, instance: Dict) -> Dict:
-        """Process a single instance with caching. This is preserved for individual instance processing
-        and is used by unit tests, but the main processing now uses batch_completion."""
-        # Use the instance_id from the JSON directly
-        if "instance_id" not in instance:
-            raise ValueError(
-                f"Missing required 'instance_id' field in instance: {instance}"
-            )
-
-        instance_id = instance["instance_id"]
-        cache_path = self.get_cache_path(instance_id)
-
-        # Check cache first
-        if self.use_cache and os.path.exists(cache_path):
-            with open(cache_path, "r") as f:
-                return json.load(f)
-
-        # Prepare the request
-        messages = self.prepare_instance_message(instance)
-
-        # Make API call
-        try:
-            api_result = completion(model=self.model, messages=messages)
-            result_text = api_result["choices"][0]["message"]["content"]
-
-            # Extract answer
-            answer = self.extract_answer(result_text)
-
-            result = {
-                "instance_id": instance_id,
-                "full_response": result_text,
-                "extracted_answer": answer,
-                "model": self.model,
-                "timestamp": time.time(),
-            }
-
-            # Cache result
-            if self.use_cache:
-                with open(cache_path, "w") as f:
-                    json.dump(result, f)
-
-            return result
-        except Exception as e:
-            error_result = {
-                "instance_id": instance_id,
-                "error": str(e),
-                "model": self.model,
-                "timestamp": time.time(),
-            }
-            print(f"Error processing instance {instance_id}: {e}")
-            return error_result
 
     def run(self) -> List[Dict]:
         """Process all instances and return results using batch processing."""
@@ -269,77 +220,55 @@ Remember to provide your final answer in the format "Final Answer: X" where X is
             batch_ids.append(instance_id)
             batch_messages.append(self.prepare_instance_message(instance))
 
-        # Process all instances in a single batch call
-        try:
-            api_responses = batch_completion(
-                model=self.model,
-                messages=batch_messages,
-                max_tokens=1024,  # Adjust as needed
-                timeout=120,  # Adjust timeout as needed
-                max_workers=self.max_workers,  # Use configured worker count
-            )
+        api_responses = batch_completion(
+            model=self.model,
+            messages=batch_messages,
+            max_tokens=1024,  # Adjust as needed
+            timeout=120,  # Adjust timeout as needed
+            max_workers=self.max_workers,  # Use configured worker count
+        )
 
-            # Process responses
-            batch_results = []
-            for i, response in enumerate(api_responses):
-                instance_id = batch_ids[i]
+        print(api_responses)
+        quit()
 
-                try:
-                    # Extract result text from response
-                    result_text = response.choices[0].message.content
+        # Process responses
+        batch_results = []
+        for i, response in enumerate(api_responses):
+            instance_id = batch_ids[i]
 
-                    # Extract answer
-                    answer = self.extract_answer(result_text)
+            try:
+                # Extract result text from response
+                result_text = response.choices[0].message.content
 
-                    result = {
-                        "instance_id": instance_id,
-                        "full_response": result_text,
-                        "extracted_answer": answer,
-                        "model": self.model,
-                        "timestamp": time.time(),
-                    }
+                # Extract answer
+                answer = self.extract_answer(result_text)
 
-                    # Cache result
-                    if self.use_cache:
-                        cache_path = self.get_cache_path(str(instance_id))
-                        with open(cache_path, "w") as f:
-                            json.dump(result, f)
+                result = {
+                    "instance_id": instance_id,
+                    "full_response": result_text,
+                    "extracted_answer": answer,
+                    "model": self.model,
+                    "timestamp": time.time(),
+                }
 
-                    batch_results.append(result)
-                    print(f"ID: {instance_id} | Answer: {answer}")
+                # Cache result
+                if self.use_cache:
+                    cache_path = self.get_cache_path(str(instance_id))
+                    with open(cache_path, "w") as f:
+                        json.dump(result, f)
 
-                except Exception as e:
-                    error_result = {
-                        "instance_id": instance_id,
-                        "error": f"Error processing response: {str(e)}",
-                        "model": self.model,
-                        "timestamp": time.time(),
-                    }
-                    batch_results.append(error_result)
-                    print(f"Error processing response for instance {instance_id}: {e}")
+                batch_results.append(result)
+                print(f"ID: {instance_id} | Answer: {answer}")
 
-        except Exception as e:
-            # If batch processing fails completely, process instances individually
-            print(
-                f"Batch processing failed: {e}. Falling back to individual processing."
-            )
-            batch_results = []
-
-            for instance_id, instance in tqdm(to_process, desc="Individual processing"):
-                try:
-                    result = self.process_instance(instance)
-                    batch_results.append(result)
-                except Exception as individual_error:
-                    error_result = {
-                        "instance_id": instance_id,
-                        "error": f"Individual processing error: {str(individual_error)}",
-                        "model": self.model,
-                        "timestamp": time.time(),
-                    }
-                    batch_results.append(error_result)
-                    print(
-                        f"Error in individual processing for {instance_id}: {individual_error}"
-                    )
+            except Exception as e:
+                error_result = {
+                    "instance_id": instance_id,
+                    "error": f"Error processing response: {str(e)}",
+                    "model": self.model,
+                    "timestamp": time.time(),
+                }
+                batch_results.append(error_result)
+                print(f"Error processing response for instance {instance_id}: {e}")
 
         # Combine cached and new results
         combined_results = cached_results + batch_results
@@ -390,15 +319,6 @@ Remember to provide your final answer in the format "Final Answer: X" where X is
         print(f"Detailed results saved to {detailed_output} for debugging")
 
 
-# Import unit tests from separate file
-try:
-    pass
-except ImportError:
-    print(
-        "Unit tests not found in test_caption_matcher.py. Tests will not be available."
-    )
-
-
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Run LLM inference for New Yorker caption matching"
@@ -416,13 +336,13 @@ def parse_args():
         "--output", help="Output file for results (default: auto-generated)"
     )
     parser.add_argument(
-        "--no-cache", action="store_true", help="Disable caching of results"
+        "--no_cache", action="store_true", help="Disable caching of results"
     )
     parser.add_argument(
-        "--cache-dir", default="cache", help="Directory for caching results"
+        "--cache_dir", default="cache", help="Directory for caching results"
     )
     parser.add_argument(
-        "--max-workers",
+        "--max_workers",
         type=int,
         default=10,
         help="Maximum number of parallel workers for batch processing (default: 10)",
