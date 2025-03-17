@@ -38,13 +38,6 @@ PROMPT_USER_WITH_VISION_V1 = """I will provide a New Yorker cartoon image to you
 
 PROMPT_ASSISTANT_WITH_VISION_V1 = """Sure, please describe the New Yorker cartoon, and provide me with the 5 caption choices. I will think about how each one might match the image, and in the end, select the correct one by completing my response with "Final Answer: X" where X is either A, B, C, D, or E."""
 
-EXTRACTION_PROMPT = """Extract only the letter of the final answer (A, B, C, D, or E) from the following text. 
-Only look for phrases like "Final Answer: X" at the end of the response.
-Ignore any preliminary or hypothetical answers that appear during the reasoning process.
-Respond with just the single letter of the final answer.
-
-Text: {text}"""
-
 
 class CaptionMatcher:
     def __init__(
@@ -115,32 +108,10 @@ class CaptionMatcher:
             if match:
                 return match.group(1)
 
-        # If all pattern matching fails, use another LLM call to extract the answer
-        extracted = self.extract_answer_with_llm(text)
-
         # Log when we had to resort to the fallback extraction
-        print(f"Used LLM fallback extraction, result: {extracted}")
-        return extracted
+        print(f"Used LLM fallback extraction, just guessing E. This should not happen if the model follows the formatting requests.")
+        return 'E'
 
-    def extract_answer_with_llm(self, text: str) -> str:
-        """Use an LLM to extract the answer when regex fails."""
-        try:
-            messages = [
-                {"role": "user", "content": EXTRACTION_PROMPT.format(text=text)}
-            ]
-
-            # Use a simpler model for extraction to save costs
-            extraction_model = "gpt-3.5-turbo"
-            api_result = completion(model=extraction_model, messages=messages)
-            extracted = api_result["choices"][0]["message"]["content"].strip()
-
-            # Validate the extraction - should be a single letter A-E
-            if re.match(r"^[A-E]$", extracted):
-                return extracted
-            return "E"  # Default fallback if extraction fails
-        except Exception as e:
-            print(f"Error extracting answer with LLM: {e}")
-            return "E"  # Default fallback
 
     def prepare_instance_message(self, instance: Dict) -> List[Dict]:
         """Prepare message array for a single instance."""
@@ -228,8 +199,6 @@ Remember to provide your final answer in the format "Final Answer: X" where X is
             max_workers=self.max_workers,  # Use configured worker count
         )
 
-        print(api_responses)
-        quit()
 
         # Process responses
         batch_results = []
