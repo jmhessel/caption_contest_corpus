@@ -69,14 +69,14 @@ class CaptionMatcher:
                 "user_prompt": PROMPT_USER_MATCHING,
                 "assistant_prompt": PROMPT_ASSISTANT_MATCHING,
                 "default_answer": "E",
-                "valid_options": "A-E"
+                "valid_options": "A-E",
             },
             "ranking": {
                 "user_prompt": PROMPT_USER_RANKING,
                 "assistant_prompt": PROMPT_ASSISTANT_RANKING,
                 "default_answer": "B",
-                "valid_options": "AB"
-            }
+                "valid_options": "AB",
+            },
         }
 
         # Create cache directory if needed
@@ -102,7 +102,7 @@ class CaptionMatcher:
         """Extract the answer letter from model output using regex."""
         valid_options = self.task_config[self.task_type]["valid_options"]
         default_answer = self.task_config[self.task_type]["default_answer"]
-        
+
         # Look for the exact "Final Answer: X" format
         pattern = f"Final Answer: ([{valid_options}])"
         match = re.search(pattern, text)
@@ -168,8 +168,14 @@ Remember to provide your final answer in the format "Final Answer: X" where X is
         # Create message structure with appropriate prompts from config
         messages = [
             {"role": "system", "content": PROMPT_WITH_VISION_SYSTEM},
-            {"role": "user", "content": self.task_config[self.task_type]["user_prompt"]},
-            {"role": "assistant", "content": self.task_config[self.task_type]["assistant_prompt"]},
+            {
+                "role": "user",
+                "content": self.task_config[self.task_type]["user_prompt"],
+            },
+            {
+                "role": "assistant",
+                "content": self.task_config[self.task_type]["assistant_prompt"],
+            },
             {
                 "role": "user",
                 "content": [
@@ -181,7 +187,7 @@ Remember to provide your final answer in the format "Final Answer: X" where X is
                 ],
             },
         ]
-            
+
         return messages
 
     def run(self) -> List[Dict]:
@@ -321,13 +327,13 @@ Remember to provide your final answer in the format "Final Answer: X" where X is
                 errors += 1
                 submission_format[instance_id] = default_answer  # Default for errors
             else:
-                submission_format[instance_id] = result.get("extracted_answer", default_answer)
+                submission_format[instance_id] = result.get(
+                    "extracted_answer", default_answer
+                )
 
         # Generate default output filename if not provided
         if output_file is None:
-            output_file = (
-                f"predictions_{self.task_type}_{self.model.replace('/', '_')}_{int(time.time())}.json"
-            )
+            output_file = f"predictions_{self.task_type}_{self.model.replace('/', '_')}_{int(time.time())}.json"
 
         # Save results
         with open(output_file, "w") as f:
@@ -362,10 +368,10 @@ def parse_args():
         "--images_dir", required=True, help="Directory containing cartoon images"
     )
     parser.add_argument(
-        "--task", 
-        default="matching", 
+        "--task",
+        default="matching",
         choices=["matching", "ranking"],
-        help="Task type: matching (5 options) or ranking (2 options)"
+        help="Task type: matching (5 options) or ranking (2 options)",
     )
     parser.add_argument(
         "--output", help="Output file for results (default: auto-generated)"
