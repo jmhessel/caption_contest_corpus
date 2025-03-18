@@ -18,26 +18,25 @@ import base64
 import hashlib
 import json
 import os
-
-# in lieu of a loading bar...
-os.environ["LITELLM_LOG"] = "DEBUG"
 import re
 import time
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from litellm import batch_completion, completion
-import litellm
 from tqdm import tqdm
 
 # Constants
-PROMPT_WITH_VISION_SYSTEM_MATCHING_V1 = """You are CaptionContestGPT, an expert language model at understanding the famous New Yorker caption contest. You follow the contest each week, and understand what makes for a humorous caption for each cartoon. You are aware of the various theories of humor, and read/anaylze the caption contest entries and winners each week.
+PROMPT_WITH_VISION_SYSTEM_V1 = """You are CaptionContestGPT, an expert language model at understanding the famous New Yorker caption contest. You follow the contest each week, and understand what makes for a humorous caption for each cartoon. You are aware of the various theories of humor, and read/anaylze the caption contest entries and winners each week.
 Some things to remember:
 - You're well versed in the history of the New Yorker Caption contest, and the types of captions that are selected as finalists/winners vs. those that are not.
 - You think step-by-step, but aren't overly verbose.
 - You can express uncertainty in your thinking, but in the end, pick the single best answer in the requested format.
 - Your final answer must be clearly indicated with the exact phrase "Final Answer: X" where X is the letter choice."""
 
-PROMPT_USER_WITH_VISION_V1 = """I will provide a New Yorker cartoon image to you from the famous caption contest. Along with the cartoon, I will give you 5 choices (labelled A-E) for captions. One of the captions was the winning caption for that cartoon, the other captions do not correspond to this cartoon. Your job is to first reason step-by-step about which answer might be the correctly matching caption, and, in the end, respond with "Final Answer: X" where X is either A, B, C, D, or E. If none seem to match, still try take your best guess between the given options. Make sure to use the exact format "Final Answer: X" at the end of your response."""
+# New prompt for new task
+PROMPT_USER_RANKING_WITH_VISION_V1 = """I will provide a New Yorker cartoon image to you from the famous caption contest. Along with the cartoon, I will give you 2 choices (labelled A and B) for captions. One of the two captions was selected as a winning caption for that cartoon: winning captions are particularly clever, punchy, funny, etc. The other caption was justed to be less funny by people. Your job is to first reason step-by-step about which caption might be funnier, and, in the end, respond with "Final Answer: A" or "Final Answer: B", selecting the one that you think humans found funnier."""
+
+PROMPT_USER_MATCHING_WITH_VISION_V1 = """I will provide a New Yorker cartoon image to you from the famous caption contest. Along with the cartoon, I will give you 5 choices (labelled A-E) for captions. One of the captions was the winning caption for that cartoon, the other captions do not correspond to this cartoon. Your job is to first reason step-by-step about which answer might be the correctly matching caption, and, in the end, respond with "Final Answer: X" where X is either A, B, C, D, or E. If none seem to match, still try take your best guess between the given options. Make sure to use the exact format "Final Answer: X" at the end of your response."""
 
 PROMPT_ASSISTANT_WITH_VISION_V1 = """Sure, please describe the New Yorker cartoon, and provide me with the 5 caption choices. I will think about how each one might match the image, and in the end, select the correct one by completing my response with "Final Answer: X" where X is either A, B, C, D, or E."""
 
@@ -51,6 +50,7 @@ class CaptionMatcher:
         use_cache: bool = True,
         cache_dir: str = "cache",
         max_workers: int = 10,
+        batch_size: int = 5,
     ):
         self.model = model
         self.instances_json = instances_json
@@ -58,6 +58,7 @@ class CaptionMatcher:
         self.use_cache = use_cache
         self.cache_dir = cache_dir
         self.max_workers = max_workers
+        self.batch_size = batch_size
 
         # Create cache directory if needed
         if self.use_cache:
@@ -153,14 +154,13 @@ Remember to provide your final answer in the format "Final Answer: X" where X is
         return messages
 
     def run(self) -> List[Dict]:
-        """Process all instances and return results using batch processing."""
+        """Process all instances and return results using batch processing with external batching."""
         # First, check which instances we need to process (not in cache)
         to_process = []
         cached_results = []
 
-        print("Checking cache and preparing batch processing...")
-        for instance in self.instances:
-            # Use the instance_id from the JSON directly
+        print("Checking cache...")
+        for instance in tqdm(self.instances, desc="Cache check"):
             if "instance_id" not in instance:
                 raise ValueError(
                     f"Missing required 'instance_id' field in instance: {instance}"
@@ -181,67 +181,95 @@ Remember to provide your final answer in the format "Final Answer: X" where X is
             print("All results found in cache.")
             return cached_results
 
-        # Prepare batch messages
-        print(
-            f"Processing {len(to_process)} instances with batch API using {self.max_workers} workers..."
-        )
-        batch_messages = []
-        batch_ids = []
-
-        for instance_id, instance in to_process:
-            batch_ids.append(instance_id)
-            batch_messages.append(self.prepare_instance_message(instance))
-
-        api_responses = batch_completion(
-            model=self.model,
-            messages=batch_messages,
-            max_tokens=1024,  # Adjust as needed
-            timeout=120,  # Adjust timeout as needed
-            max_workers=self.max_workers,  # Use configured worker count
-        )
-
-        # Process responses
+        # Process in batches to make caching meaningful
         batch_results = []
-        for i, response in enumerate(api_responses):
-            instance_id = batch_ids[i]
+        num_batches = (len(to_process) + self.batch_size - 1) // self.batch_size
+
+        print(
+            f"Processing {len(to_process)} instances in {num_batches} batches (size: {self.batch_size})..."
+        )
+
+        progress_bar = tqdm(total=len(to_process), desc="Processing")
+
+        for i in range(0, len(to_process), self.batch_size):
+            batch = to_process[i : i + self.batch_size]
+            batch_messages = []
+            batch_ids = []
+
+            # Prepare batch
+            for instance_id, instance in batch:
+                batch_ids.append(instance_id)
+                batch_messages.append(self.prepare_instance_message(instance))
 
             try:
-                # Extract result text from response
-                result_text = response.choices[0].message.content
+                # Process mini-batch with batch_completion API
+                api_responses = batch_completion(
+                    model=self.model,
+                    messages=batch_messages,
+                    # max_tokens=32768,
+                    timeout=120,
+                    max_workers=self.max_workers,
+                )
 
-                # Extract answer
-                answer = self.extract_answer(result_text)
+                # Process responses
+                for j, response in enumerate(api_responses):
+                    instance_id = batch_ids[j]
+                    try:
+                        result_text = response.choices[0].message.content
+                        answer = self.extract_answer(result_text)
 
-                result = {
-                    "instance_id": instance_id,
-                    "full_response": result_text,
-                    "extracted_answer": answer,
-                    "model": self.model,
-                    "timestamp": time.time(),
-                }
+                        result = {
+                            "instance_id": instance_id,
+                            "full_response": result_text,
+                            "extracted_answer": answer,
+                            "model": self.model,
+                            "timestamp": time.time(),
+                        }
 
-                # Cache result
-                if self.use_cache:
-                    cache_path = self.get_cache_path(str(instance_id))
-                    with open(cache_path, "w") as f:
-                        json.dump(result, f)
+                        # Cache result
+                        if self.use_cache:
+                            cache_path = self.get_cache_path(instance_id)
+                            with open(cache_path, "w") as f:
+                                json.dump(result, f)
 
-                batch_results.append(result)
-                print(f"ID: {instance_id} | Answer: {answer}")
+                        batch_results.append(result)
+
+                    except Exception as e:
+                        error_msg = str(e)
+                        batch_results.append(
+                            {
+                                "instance_id": instance_id,
+                                "error": f"Response error: {error_msg}",
+                                "model": self.model,
+                                "timestamp": time.time(),
+                            }
+                        )
+                        print(f"Error for instance {instance_id}: {error_msg}")
 
             except Exception as e:
-                error_result = {
-                    "instance_id": instance_id,
-                    "error": f"Error processing response: {str(e)}",
-                    "model": self.model,
-                    "timestamp": time.time(),
-                }
-                batch_results.append(error_result)
-                print(f"Error processing response for instance {instance_id}: {e}")
+                error_msg = str(e)
+                print(
+                    f"Batch error (instances {i+1}-{min(i+self.batch_size, len(to_process))}): {error_msg}"
+                )
 
-        # Combine cached and new results
-        combined_results = cached_results + batch_results
-        return combined_results
+                # Add errors for all instances in the failed batch
+                for instance_id, _ in batch:
+                    batch_results.append(
+                        {
+                            "instance_id": instance_id,
+                            "error": f"Batch error: {error_msg}",
+                            "model": self.model,
+                            "timestamp": time.time(),
+                        }
+                    )
+
+            # Update progress and add delay between batches
+            progress_bar.update(len(batch))
+            if i + self.batch_size < len(to_process):
+                time.sleep(0.2)  # Reduced delay between batches
+
+        progress_bar.close()
+        return cached_results + batch_results
 
     def save_results(self, output_file: str = None) -> None:
         """Run inference and save results to the expected submission format.
@@ -253,39 +281,39 @@ Remember to provide your final answer in the format "Final Answer: X" where X is
 
         # Convert to the expected format for submission
         submission_format = {}
+        errors = 0
+
         for result in results:
             instance_id = result.get("instance_id")
             if "error" in result:
-                print(f"Warning: Error for instance {instance_id}: {result['error']}")
-                # Default to 'E' for errors if we must make a prediction
-                submission_format[instance_id] = "E"
+                errors += 1
+                submission_format[instance_id] = "E"  # Default for errors
             else:
                 submission_format[instance_id] = result.get("extracted_answer", "E")
 
+        # Generate default output filename if not provided
         if output_file is None:
             output_file = (
                 f"predictions_{self.model.replace('/', '_')}_{int(time.time())}.json"
             )
 
+        # Save results
         with open(output_file, "w") as f:
             json.dump(submission_format, f, indent=2)
 
-        # Print summary statistics
-        errors = sum(1 for r in results if "error" in r)
-        duration = end_time - start_time
+        # Save detailed results for debugging
+        detailed_output = f"detailed_{output_file}"
+        with open(detailed_output, "w") as f:
+            json.dump(results, f, indent=2)
 
-        print(f"\nResults saved to {output_file} in submission format")
+        # Print summary statistics
+        duration = end_time - start_time
+        print(f"\nResults saved to {output_file}")
         print(
             f"Processed {len(results)} instances with {errors} errors in {duration:.2f} seconds"
         )
         if len(results) > 0:
             print(f"Average time per instance: {duration/len(results):.2f} seconds")
-
-        # Also save detailed results for debugging if needed
-        detailed_output = f"detailed_{output_file}"
-        with open(detailed_output, "w") as f:
-            json.dump(results, f, indent=2)
-        print(f"Detailed results saved to {detailed_output} for debugging")
 
 
 def parse_args():
@@ -314,7 +342,13 @@ def parse_args():
         "--max_workers",
         type=int,
         default=1,
-        help="Maximum number of parallel workers for batch processing (default: 10)",
+        help="Workers for parallel processing within a batch (default: 10)",
+    )
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=10,
+        help="Number of instances in each external batch (default: 5)",
     )
 
     return parser.parse_args()
@@ -331,6 +365,7 @@ def main():
         use_cache=not args.no_cache,
         cache_dir=args.cache_dir,
         max_workers=args.max_workers,
+        batch_size=args.batch_size,
     )
 
     matcher.save_results(args.output)
